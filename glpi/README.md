@@ -68,6 +68,8 @@ The VM hardware matches VMID 102, the existing Linux lab host: same CPU type, Vi
 
 The application layout follows GLPI's own installation documentation rather than dropping everything under one directory. Program files stay at /var/www/glpi owned by root, with configuration in /etc/glpi, data in /var/lib/glpi/files, logs in /var/log/glpi, and plugins in /var/lib/glpi/plugins. Only the public subdirectory is served to browsers. The reason is that if Apache serves the GLPI root instead, the configuration and data directories become reachable over HTTP, and GLPI's own health check flags that as a finding.
 
+Evidence: 01-requirements-check.png shows the health check with every required item passing, including the two permission checks and the marketplace directory. SELinux is skipped because Debian does not use it, the session security check is skipped because the command line cannot test browser cookies, and the ldap extension is reported as not present because nothing here authenticates against an LDAP server.
+
 ---
 
 ## Steps Taken
@@ -106,6 +108,8 @@ That one stuck with me because the symptom and the cause were in completely diff
 ## Current Status
 
 GLPI is running and in use. It is reachable over HTTPS on the LAN only. It is not exposed to the internet, and remote access would go through the WireGuard tunnel documented in ../remote-access/remote-access-wireguard.md.
+
+Evidence: 03-dashboard.png shows the application running and signed in as the dedicated super-admin account. The absence of GLPI's default password warning banner on that page is what confirms the four default accounts were disabled, since GLPI displays it on the home page for any default account still using its original password. 04-itil-categories.png shows the category tree the API script created. 02-snapshots-201.png shows both restore points on the VM.
 
 Open items:
 
@@ -147,5 +151,9 @@ Across this and the other projects in this repository, the pattern is consistent
 
 - README.md, this document
 - glpi-build-runbook.md, the full fourteen phase build procedure with the issues encountered
+- screenshots/01-requirements-check.png, the GLPI health check with all required items passing
+- screenshots/02-snapshots-201.png, both snapshots on VMID 201
+- screenshots/03-dashboard.png, GLPI running and signed in as the super-admin account
+- screenshots/04-itil-categories.png, the ITIL category tree created through the REST API
 - ../network-topology.md, the VLAN layout and VM inventory this system sits inside
 - ../remote-access/remote-access-wireguard.md, the VPN that would provide external access
