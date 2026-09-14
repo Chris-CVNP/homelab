@@ -151,6 +151,7 @@ Across this and the other projects in this repository, the pattern is consistent
 
 - README.md, this document
 - glpi-build-runbook.md, the full fourteen phase build procedure with the issues encountered
+- glpi-configuration.md, the category tree, templates, groups, and workflow configured through the REST API
 - screenshots/01-requirements-check.png, the GLPI health check with all required items passing
 - screenshots/02-snapshots-201.png, both snapshots on VMID 201
 - screenshots/03-dashboard.png, GLPI running and signed in as the super-admin account

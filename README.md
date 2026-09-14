@@ -16,7 +16,7 @@ Internal RFC 1918 addressing appears as written throughout, since that space is 
 
 **remote-access/** A WireGuard road warrior VPN on pfSense providing remote access to the lab without exposing the hypervisor management interface, RDP, or SSH to the public internet. The tunnel is configured and the client access rule is scoped to a single VLAN. External validation is not yet complete, and the document says so rather than claiming otherwise.
 
-**glpi/** Standing up GLPI as a ticketing, asset management, and knowledge base system for the lab. Built entirely from the Proxmox host CLI with no file transfer from a workstation, on Debian 13 with Apache, MariaDB, and PHP, served over HTTPS and separated into the directory layout GLPI recommends. Includes the six problems hit along the way, among them a single-character typo in a PHP limit that made the application silently reject form submissions.
+**glpi/** Standing up GLPI as a ticketing, asset management, and knowledge base system for the lab. Built entirely from the Proxmox host CLI with no file transfer from a workstation, on Debian 13 with Apache, MariaDB, and PHP, served over HTTPS and separated into the directory layout GLPI recommends. Includes the six problems hit along the way, among them a single-character typo in a PHP limit that made the application silently reject form submissions, and a separate write-up of the category tree, templates, and workflow configured through the REST API.
 
 ## A Note on Status
 
