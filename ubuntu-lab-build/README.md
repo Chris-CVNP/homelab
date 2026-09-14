@@ -190,11 +190,11 @@ Before disabling password authentication, a second session was left open and a f
 sudo apt install fail2ban
 ```
 
-Then create /etc/fail2ban/jail.local with an sshd stanza, a maxretry of 5, a findtime window, and a bantime of one hour, and enable the service.
+Then create /etc/fail2ban/jail.local with an sshd stanza and enable the service. The policy set was four failed attempts within a findtime window of 1000 seconds, roughly seventeen minutes, producing a bantime of 8000 seconds, roughly two hours and thirteen minutes. Those values are stricter than the fail2ban defaults of five attempts and a ten minute ban, which was deliberate on a machine reachable from every host on the LAN.
 
-**Expected output includes:** fail2ban.service active and enabled, and fail2ban-client status sshd reporting the sshd jail with a filter and an action attached.
+**Expected output includes:** fail2ban.service active and running, and fail2ban-client status sshd reporting the sshd jail with a filter and an action attached.
 
-**Status:** Configured, service state not yet evidenced on this VM. See Troubleshooting Notes, Issue 1, and the note under Verification below.
+**Status:** Complete and verified. Evidence: 13-fail2ban-service.png and 14-fail2ban-jail.png. See Troubleshooting Notes, Issue 2, for why this step took two attempts separated by several weeks.
 
 ### Step 12. Configure Git and authenticate to GitHub
 
@@ -258,6 +258,39 @@ sudo apt install fail2ban/jail.local
 
 **Result:** apt accepted the corrected command. Evidence: 03-ssh-enabled.png shows the rejected attempt and the error text.
 
+### Issue 2: fail2ban enabled, running, and doing nothing
+
+**Incorrect configuration,** in /etc/fail2ban/jail.local:
+
+```
+[sshd]
+enable = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry 4
+bantime = 8000
+findtime = 1000
+```
+
+**Root cause:** two separate faults on two lines. Line 6 was missing an equals sign, and fail2ban configuration is INI format, so the parser threw on it and the daemon exited with status 255 on every start attempt. Line 2 read `enable` rather than `enabled`, which is not a recognized key. Either one alone breaks the jail, and they fail differently: the missing equals sign kills the service outright, while the wrong key name would have left the service running with no sshd jail loaded at all.
+
+**How it was found:** not by testing. `systemctl is-enabled fail2ban` returns enabled whether or not the service can actually start, so nothing in the ordinary checks caught it. It surfaced weeks later during a power outage recovery, when this document's own unverified item was finally checked and `systemctl status` reported failed rather than active.
+
+**Resolution:**
+
+```
+sudo sed -i -e 's/^enable = true/enabled = true/' -e 's/^maxretry 4/maxretry = 4/' /etc/fail2ban/jail.local
+```
+
+```
+sudo systemctl restart fail2ban
+```
+
+**Result:** the service reports active and running with Server ready, and `fail2ban-client status sshd` returns the jail with its filter and action attached. Evidence: 13-fail2ban-service.png and 14-fail2ban-jail.png.
+
+One detail worth recording. The jail reports its source as `_SYSTEMD_UNIT=sshd.service` rather than the logpath in the configuration. Debian and Ubuntu builds of fail2ban default to the systemd journal backend, which overrides the logpath setting. The line is not wrong, it is simply ignored, and the jail reads the journal instead.
+
 ---
 
 ## Verification
@@ -269,23 +302,17 @@ The hardening was confirmed from more than one angle rather than by trusting tha
 - `whoami`, `pwd`, and `ls /` from the SSH session confirming the account and a normal filesystem. Evidence: 11-lab-verification.png
 - `ip -4 addr show` confirming the expected address. Evidence: 12-ip-verification.png
 
-One item is not yet verified. There is no capture showing fail2ban's service state or jail status on VMID 102. The host process list capture from the Proxmox node shows fail2ban running on STEELBYTE-R320, which is the hypervisor, not this VM. Two commands on 1601 would close it:
+- `systemctl status fail2ban` and `fail2ban-client status sshd` confirming the service is running and the jail is loaded. Evidence: 13-fail2ban-service.png and 14-fail2ban-jail.png
 
-```
-sudo systemctl status fail2ban
-```
+The fail2ban item is worth singling out, because for several weeks this document recorded it as configured rather than verified, on the principle that a control which has not been observed working is not a control that has been proven. That turned out to be exactly right. When it was finally checked, the service had never started successfully, for the reasons in Issue 2. Had it been written up as complete on the strength of the configuration file existing, the gap would have gone unnoticed indefinitely.
 
-```
-sudo fail2ban-client status sshd
-```
-
-Until those exist, Step 11 is recorded as configured rather than verified, on the same principle applied to the VPN write-up: a control that has not been observed working is not a control that has been proven.
+The distinction matters more than it sounds. `systemctl is-enabled` returns enabled for a service that fails on every start, and a configuration file with a typo in it looks correct at a glance. Neither is evidence. Only the running service and the loaded jail are.
 
 ---
 
 ## Portfolio Card
 
-Built and hardened an Ubuntu Server 24.04 LTS lab machine on Proxmox VE, going well beyond the course requirement because the VM lives on a segmented server VLAN rather than inside a laptop hypervisor. Moved administration off the hypervisor console onto SSH, replaced password authentication with an ed25519 key pair installed by hand, removed direct root login, and put a brute force countermeasure in front of the service. Verified the result with sshd -T against the fully resolved configuration rather than a single config file, and confirmed a working key login before locking password authentication so the change could not strand the machine. Diagnosed and corrected an apt release pinning syntax error that blocked the fail2ban install.
+Built and hardened an Ubuntu Server 24.04 LTS lab machine on Proxmox VE, going well beyond the course requirement because the VM lives on a segmented server VLAN rather than inside a laptop hypervisor. Moved administration off the hypervisor console onto SSH, replaced password authentication with an ed25519 key pair installed by hand, removed direct root login, and put a brute force countermeasure in front of the service. Verified the result with sshd -T against the fully resolved configuration rather than a single config file, and confirmed a working key login before locking password authentication so the change could not strand the machine. Diagnosed and corrected an apt release pinning syntax error that blocked the fail2ban install, and later found that the brute force countermeasure had never actually run: two typos in its configuration, one killing the daemon on startup and one silently preventing the jail from loading, neither of which showed up in the service's enabled state.
 
 ---
 
@@ -311,3 +338,5 @@ AI assisted with the structure of this document and with checking technical clai
 - screenshots/10-snapshot-102.png, Proxmox snapshot task for VMID 102 ending TASK OK
 - screenshots/11-lab-verification.png, whoami, pwd, and ls / over SSH
 - screenshots/12-ip-verification.png, ip -4 addr show
+- screenshots/13-fail2ban-service.png, fail2ban service active and running
+- screenshots/14-fail2ban-jail.png, the sshd jail loaded with its filter and action
